@@ -23,6 +23,27 @@ jobs:
       - name: Build
         run: dotnet build SmallCityMastodonBot.csproj --configuration Release
 
+      - name: Remove building threshold for this dry run only
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("SmallCityBotConfig.json")
+          config = json.loads(path.read_text())
+          bot = next(
+              b for b in config["botInfo"]
+              if b["botName"] == "UnmappedSmallTownEurope"
+          )
+          for query in bot["overpassQuery"]:
+              if query["featureTag"] == "building":
+                  query["countMaximum"] = "-1"
+
+          path.write_text(
+              json.dumps(config, ensure_ascii=False, indent=2) + "\n"
+          )
+          PY
+
       - name: Generate a post without publishing
         shell: bash
         run: |
