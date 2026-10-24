@@ -75,6 +75,39 @@
       }
     },
     {
+      "botUrl": "@SmallTownEurope@en.osm.town",
+      "botDomain": "en.osm.town",
+      "botName": "UnmappedSmallTownEurope",
+      "townFile": "townsList_Europe_test.json",
+      "overpassQuery": [
+        {
+          "featureTag": "building",
+          "queryType": "count",
+          "countMaximum": "10",
+          "radiusInMeters": "800",
+          "message": "Building count"
+        }
+      ],
+      "postText": {
+        "greetingText": "seems like it could use some mapping!",
+        "populationText": "Population",
+        "mapLinkText": "Map link"
+      },
+      "monthlyPostText": {
+        "culture": "en-GB",
+        "language": "en",
+        "headerText": "{0} Retrospective 🏡",
+        "introText": "In {0} we featured {1} small towns... and you mapped {2} of them!",
+        "buildingsLine": "🏠 {0} buildings added",
+        "changesetsLine": "✏️ {0} changesets by {1} mappers",
+        "mostImprovedText": "Most improved:",
+        "starLine": "⭐ {0}, {1} (+{2} buildings)",
+        "thanksText": "Thanks for putting small towns on the map!",
+        "hashtags": "#OpenStreetMap #SmallTownEurope",
+        "imageAltText": "OpenStreetMap map of {0}, {1}, where volunteers added {2} buildings in {3}. The map shows the town's streets with newly traced building footprints."
+      }
+    },
+    {
       "botUrl": "@SmallTownBrazil@en.osm.town",
       "botDomain": "en.osm.town",
       "botName": "UnmappedSmallTownBrazil",
