@@ -47,3 +47,9 @@ jobs:
           API_TOKEN: ${{ secrets.MASTODON_API_KEY_AU }}
           OVERPASS_PRIMARY_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
         run: dotnet run --project SmallCityMastodonBot.csproj -- "$API_TOKEN" "UnmappedSmallTownAustralia" "/posttown"
+
+      - name: Run project for Europe
+        env:
+          API_TOKEN: ${{ secrets.MASTODON_API_KEY_EUROPE }}
+          OVERPASS_PRIMARY_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
+        run: dotnet run --project SmallCityMastodonBot.csproj -- "$API_TOKEN" "UnmappedSmallTownEurope" "/posttown"
