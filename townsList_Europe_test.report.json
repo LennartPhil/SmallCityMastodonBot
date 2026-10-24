@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-10-24T14:42:36.951299+00:00",
+  "countries": [
+    "AT"
+  ],
+  "scope": "Entire selected OSM country areas, not a geographic Europe polygon",
+  "candidate_count": 11548,
+  "duplicate_node_ids_removed": 0,
+  "timestamp_note": "Dataset timestamps are oldest source dates; see each country below.",
+  "sources": {
+    "AT": {
+      "candidates": 11548,
+      "rejected": {},
+      "osm3s": {
+        "timestamp_osm_base": "2026-10-24T14:40:20Z",
+        "timestamp_areas_base": "2026-10-24T12:13:46Z",
+        "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+      },
+      "query": "[out:json][timeout:180];\narea[\"ISO3166-1\"=\"AT\"][\"boundary\"=\"administrative\"][\"admin_level\"=\"2\"]->.country;\n.country out count;\nnode(area.country)[\"place\"~\"^(town|village|hamlet)$\"][\"name\"]\n  [\"population\"~\"^[0-9]+$\"](if:number(t[\"population\"]) > 0 && number(t[\"population\"]) < 1000);\nout body;"
+    }
+  }
+}
