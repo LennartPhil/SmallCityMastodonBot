@@ -1,0 +1,48 @@
+name: Europe dry run
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build
+        run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+
+      - name: Generate a post without publishing
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project SmallCityMastodonBot.csproj \
+            --configuration Release --no-build --no-launch-profile \
+            -- "12345" "UnmappedSmallTownEurope" "/posttown" \
+            2>&1 | tee europe-dry-run.log
+
+          if ! grep -Fq "Not posting town." europe-dry-run.log; then
+            echo "::error::The bot did not finish generating a test post."
+            exit 1
+          fi
+
+      - name: Save log and generated map
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: europe-dry-run
+          path: |
+            europe-dry-run.log
+            *_TownImage.png
+          retention-days: 7
