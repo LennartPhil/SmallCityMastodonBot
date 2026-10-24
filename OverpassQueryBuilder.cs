@@ -99,7 +99,7 @@ namespace overpass_parser
 
         public string CreateCountQuery(double latitude, double longitude, string tagKey, string radiusInMeters)
         {
-            return $"[out:json][timeout:25];(nwr(around:{radiusInMeters}.00,{latitude},{longitude})[\"{tagKey}\"];);out count;";
+            return FormattableString.Invariant($"[out:json][timeout:25];(nwr(around:{radiusInMeters},{latitude},{longitude})[\"{tagKey}\"];);out count;");
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace overpass_parser
                     catch (HttpRequestException ex)
                     {
                         // Exception messages embed the unreachable host, so redact before logging.
-                        Console.WriteLine($"Request to {SafeName(endpoint)} failed: {Redact(ex.Message)}");
+                        Console.WriteLine($"Request to {SafeName(endpoint)} failed: {Redact(ex.ToString())}");
                         lastException = new HttpRequestException(Redact(ex.Message));
                     }
                     catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
@@ -197,7 +197,7 @@ namespace overpass_parser
                     }
                     catch (AggregateException ex) when (ex.InnerException is HttpRequestException)
                     {
-                        Console.WriteLine($"Request to {SafeName(endpoint)} failed: {Redact(ex.InnerException.Message)}");
+                        Console.WriteLine($"Request to {SafeName(endpoint)} failed: {Redact(ex.InnerException!.ToString())}");
                         lastException = new HttpRequestException(Redact(ex.InnerException.Message));
                     }
                 }
