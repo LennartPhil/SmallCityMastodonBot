@@ -45,6 +45,8 @@ jobs:
           PY
 
       - name: Generate a post without publishing
+        env:
+          OVERPASS_PRIMARY_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
         shell: bash
         run: |
           set -o pipefail
