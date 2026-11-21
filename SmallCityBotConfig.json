@@ -83,7 +83,7 @@
         {
           "featureTag": "building",
           "queryType": "count",
-          "countMaximum": "10",
+          "countMaximum": "25",
           "radiusInMeters": "800",
           "message": "Building count"
         }

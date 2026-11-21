@@ -48,6 +48,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sys
@@ -178,7 +179,7 @@ def main():
     parser.add_argument('--countries', nargs='+', required=True, help='Codes such as AT FR TR, or all for the agreed Europe scope')
     parser.add_argument('--output', type=Path, default=Path('townsList_Europe.json'))
     parser.add_argument('--cache', type=Path, default=Path('towns-cache'))
-    parser.add_argument('--endpoint', default='https://overpass-api.de/api/interpreter')
+    parser.add_argument('--endpoint', default=os.environ.get('OVERPASS_PRIMARY_URL', 'https://overpass-api.de/api/interpreter'))
     parser.add_argument('--refresh', action='store_true')
     parser.add_argument('--diagnostics', type=Path, default=Path('overpass-diagnostics'))
     parser.add_argument('--print-query', action='store_true', help='Print queries and exit without network requests')

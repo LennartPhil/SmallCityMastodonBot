@@ -93,6 +93,7 @@ namespace SmallCityMastodonBot
                     catch (Exception ex)
                     {
                         Console.WriteLine(ex.ToString());
+                        Environment.ExitCode = 1;
                     }
                 }
             }
@@ -148,13 +149,28 @@ namespace SmallCityMastodonBot
 
             bool posted = false;
             int townsSearched = 0;
+            bool isEurope = bot.botName == "UnmappedSmallTownEurope";
+            var remainingTowns = data.elements.ToList();
+            var searchTimer = Stopwatch.StartNew();
 
             Console.WriteLine("Begin town search");
 
             while (!posted)
             {
                 townsSearched++;
+                if (isEurope && (remainingTowns.Count == 0 || townsSearched > 20 ||
+                    searchTimer.Elapsed > TimeSpan.FromMinutes(7)))
+                    throw new InvalidOperationException("Europe search exhausted its candidates or search budget. No post generated.");
                 var pickedTown = data.elements[rnd.Next(data.elements.Length)];
+                if (isEurope)
+                {
+                    int index = rnd.Next(remainingTowns.Count);
+                    pickedTown = remainingTowns[index];
+                    remainingTowns.RemoveAt(index);
+                    if (!int.TryParse(pickedTown.tags.population, out int population) ||
+                        population < 1 || population > 999)
+                        continue;
+                }
                 if (pickedTown.tags.population == "0") // skip ghost towns for now, too many old rail stops as place=locality
                     continue;
 
@@ -177,6 +193,16 @@ namespace SmallCityMastodonBot
                             skipTown = true;
                             break;
                         }
+                    }
+
+                    // Conservative Europe heuristic, not an estimate of occupied homes.
+                    // Multiply rather than divide so odd populations retain the exact boundary.
+                    if (isEurope && query.featureTag == "building" &&
+                        2L * count >= int.Parse(pickedTown.tags.population))
+                    {
+                        Console.WriteLine($"Skipping town: {count} buildings is at least half the population ({pickedTown.tags.population}).");
+                        skipTown = true;
+                        break;
                     }
 
                     queryResultPostText.Add($"{query.message}: {count}");
@@ -242,6 +268,8 @@ namespace SmallCityMastodonBot
                 posted = true;
             }
 
+            if (!posted)
+                throw new InvalidOperationException("No post generated.");
             Console.WriteLine($"INFO - TOWNS SEARCHED: {townsSearched}");
         }
 

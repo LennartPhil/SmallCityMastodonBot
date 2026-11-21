@@ -11,6 +11,8 @@ Rechecks current place/population tags and counts nwr[building] within 800m,
 matching the bot's building query. Up to 25 buildings is eligible by default;
 use --max-buildings to change it and match the C# bot configuration. Building
 tag values are not reinterpreted: even building=no is counted, as in the bot.
+Candidates also require twice the building count to be strictly below population.
+This is a conservative heuristic, not a measure of residential completeness.
 Batch size defaults to 5; requests are sequential, spaced by 10 seconds.
 Valid responses are cached for 24h; rerun the same command to resume.
 Source snapshots older than 48h are rejected. Errors never become zero counts.
@@ -247,6 +249,8 @@ def main():
                     record['status'] = 'no_longer_population_qualified'
                 elif moved_metres(original, current) > 50:
                     record['status'] = 'moved_requires_scope_review'
+                elif 2 * counts['total'] >= int(current['tags']['population']):
+                    record['status'] = 'buildings_at_least_half_population'
                 elif counts['total'] > args.max_buildings:
                     record['status'] = 'too_many_buildings'
                 else:
@@ -263,6 +267,8 @@ def main():
               'sampling_method': 'SHA256 of seed:node_id; first limit entries in hash order',
               'seed': args.seed, 'manually_excluded_ids': sorted(excluded),
               'eligible_candidates': len(eligible), 'radius_metres': 800, 'maximum_buildings': args.max_buildings,
+              'population_rule': '2 * building_count < population',
+              'threshold_comparison_note': 'All thresholds also apply the population rule',
               'threshold_comparison': {
                   str(limit): sum(r['status'] in ('eligible', 'too_many_buildings')
                                   and r.get('building_counts', {}).get('total', limit + 1) <= limit
