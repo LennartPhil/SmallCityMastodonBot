@@ -93,6 +93,7 @@ namespace SmallCityMastodonBot
                     catch (Exception ex)
                     {
                         Console.WriteLine(ex.ToString());
+                        Environment.ExitCode = 1;
                     }
                 }
             }
@@ -148,13 +149,28 @@ namespace SmallCityMastodonBot
 
             bool posted = false;
             int townsSearched = 0;
+            bool isEurope = bot.botName == "UnmappedSmallTownEurope";
+            var remainingTowns = data.elements.ToList();
+            var searchTimer = Stopwatch.StartNew();
 
             Console.WriteLine("Begin town search");
 
             while (!posted)
             {
                 townsSearched++;
+                if (isEurope && (remainingTowns.Count == 0 || townsSearched > 20 ||
+                    searchTimer.Elapsed > TimeSpan.FromMinutes(7)))
+                    throw new InvalidOperationException("Europe search exhausted its candidates or search budget. No post generated.");
                 var pickedTown = data.elements[rnd.Next(data.elements.Length)];
+                if (isEurope)
+                {
+                    int index = rnd.Next(remainingTowns.Count);
+                    pickedTown = remainingTowns[index];
+                    remainingTowns.RemoveAt(index);
+                    if (!int.TryParse(pickedTown.tags.population, out int population) ||
+                        population < 1 || population > 999)
+                        continue;
+                }
                 if (pickedTown.tags.population == "0") // skip ghost towns for now, too many old rail stops as place=locality
                     continue;
 
@@ -242,6 +258,8 @@ namespace SmallCityMastodonBot
                 posted = true;
             }
 
+            if (!posted)
+                throw new InvalidOperationException("No post generated.");
             Console.WriteLine($"INFO - TOWNS SEARCHED: {townsSearched}");
         }
 
