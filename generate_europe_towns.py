@@ -127,7 +127,11 @@ def query_for(code):
         province, _, district = code.partition(':')
         selector = f'rel["boundary"="administrative"]["admin_level"="4"]["ISO3166-2"="{province}"];map_to_area->.province;'
         if district:
-            selector += f'\nrel(area.province)["boundary"="administrative"]["admin_level"="6"]["name"="{district}"];map_to_area->.country;'
+            # Both documented spellings refer to the same district; retain the
+            # exact-one-area validation rather than silently skipping a mismatch.
+            name_filter = ('["name"~"^K[aâ]ğıthane$"]' if district == 'Kağıthane'
+                           else f'["name"="{district}"]')
+            selector += f'\nrel(area.province)["boundary"="administrative"]["admin_level"="6"]{name_filter};map_to_area->.country;'
         else:
             selector += '\n.province->.country;'
     else:
