@@ -101,13 +101,28 @@ TURKEY_UNITS = ['TR-22', 'TR-39', 'TR-59'] + ['TR-34:' + n for n in ISTANBUL_WES
 SCOPE = 'European country areas with explicit territory clips; European Türkiye by province/district boundaries; Russia, Ukraine and Cyprus excluded. Arctic territories not included.'
 
 
+# Partition the existing France clip into 40 boxes no wider/taller than 2 degrees.
+# Border nodes may occur twice; the existing node-ID deduplication removes them.
+FRANCE_TILES = {
+    f'FR_tile_{row}_{col}': (round(41.3 + row * 2, 1), round(-5.6 + col * 2, 1),
+                            min(round(43.3 + row * 2, 1), 51.2),
+                            min(round(-3.6 + col * 2, 1), 9.7))
+    for row in range(5) for col in range(8)
+}
+
+
 def inside_scope(code, lat, lon):
+    if code in FRANCE_TILES:
+        code = 'FR'
     bounds = BOUNDS.get(code, (34, -25, 72, 45))
     south, west, north, east = bounds
     return south <= lat <= north and west <= lon <= east
 
 
 def query_for(code):
+    tile_bounds = FRANCE_TILES.get(code)
+    if tile_bounds:
+        code = 'FR'
     if code.startswith('TR-'):
         province, _, district = code.partition(':')
         selector = f'rel["boundary"="administrative"]["admin_level"="4"]["ISO3166-2"="{province}"];map_to_area->.province;'
@@ -118,6 +133,7 @@ def query_for(code):
     else:
         selector = f'area["ISO3166-1"="{code}"]["boundary"="administrative"]->.country;'
     bounds = BOUNDS.get(code, (34, -25, 72, 45))
+    bounds = tile_bounds or bounds
     bbox = ','.join(str(v) for v in bounds)
     return f'''[out:json][timeout:180];
 {selector}
@@ -190,7 +206,7 @@ def main():
     if not args.endpoint.startswith('https://'):
         parser.error('Use an HTTPS endpoint')
     requested_countries = codes[:]
-    codes = [unit for code in codes for unit in (TURKEY_UNITS if code == 'TR' else [code])]
+    codes = [unit for code in codes for unit in (TURKEY_UNITS if code == 'TR' else list(FRANCE_TILES) if code == 'FR' else [code])]
     if args.print_query:
         for code in codes:
             print(f'// {code}\n{query_for(code)}\n')
@@ -268,6 +284,7 @@ def main():
               'osm3s': metadata, 'elements': sorted(nodes.values(), key=lambda x: x['id'])}
     report = {'generated_at': datetime.now(timezone.utc).isoformat(), 'countries': requested_countries,
               'scope': SCOPE, 'territory_bounds': BOUNDS, 'turkey_units': TURKEY_UNITS,
+              'france_tiles': FRANCE_TILES,
               'candidate_count': len(nodes), 'duplicate_node_ids_removed': duplicates,
               'timestamp_note': 'Dataset timestamps are oldest source dates; see each country below.',
               'sources': sources}
