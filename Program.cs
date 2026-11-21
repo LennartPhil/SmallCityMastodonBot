@@ -195,6 +195,16 @@ namespace SmallCityMastodonBot
                         }
                     }
 
+                    // Conservative Europe heuristic, not an estimate of occupied homes.
+                    // Multiply rather than divide so odd populations retain the exact boundary.
+                    if (isEurope && query.featureTag == "building" &&
+                        2L * count >= int.Parse(pickedTown.tags.population))
+                    {
+                        Console.WriteLine($"Skipping town: {count} buildings is at least half the population ({pickedTown.tags.population}).");
+                        skipTown = true;
+                        break;
+                    }
+
                     queryResultPostText.Add($"{query.message}: {count}");
                 }
 
