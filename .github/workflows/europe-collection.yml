@@ -38,6 +38,12 @@ jobs:
         with:
           path: towns-cache
           key: europe-collection-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Archive cache with portable artifact filename
+        if: always()
+        run: |
+          if [ -d towns-cache ]; then
+            tar -czf towns-cache.tar.gz towns-cache
+          fi
       - name: Save dataset and collection progress
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,6 +51,6 @@ jobs:
           name: europe-population-collection
           path: |
             collection/
-            towns-cache/
+            towns-cache.tar.gz
           retention-days: 30
           if-no-files-found: warn
