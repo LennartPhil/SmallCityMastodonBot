@@ -23,18 +23,6 @@ namespace SmallCityMastodonBot
         public static string apiKey = "";
         static void Main(string[] args)
         {
-            if (args.Length == 4 && args[0] == "/europemap")
-            {
-                double lat = double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
-                double lon = double.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture);
-                if (!double.IsFinite(lat) || !double.IsFinite(lon) || Math.Abs(lat) > 85 || Math.Abs(lon) > 180)
-                    throw new ArgumentException("Invalid map coordinates");
-                using var mapClient = new HttpClient();
-                mapClient.DefaultRequestHeaders.UserAgent.ParseAdd("SmallTownEurope/1.0 (https://en.osm.town/@SmallTownEurope)");
-                mapClient.DefaultRequestHeaders.Referrer = new Uri("https://www.openstreetmap.org/");
-                GenerateImageFromOSMTiles(mapClient, 16, lat, lon, args[3]).GetAwaiter().GetResult();
-                return;
-            }
             if (args.Length == 0)
             {
                 Console.WriteLine("USAGE: SmallCityMastodonBot apiKey [/postTown] [/postReplies] [/postMonthly]");
