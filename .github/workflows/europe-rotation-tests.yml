@@ -12,5 +12,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 -m pip install -r requirements-europe.txt
-      - run: python3 -m unittest -v test_europe_rotation test_europe_history test_europe_daily test_europe_map
+      - run: python3 -m unittest -v test_europe_rotation test_europe_history
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+      - run: dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europetest
