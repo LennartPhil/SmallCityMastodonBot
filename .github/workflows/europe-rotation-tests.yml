@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r requirements-europe.txt
-      - run: python3 -m unittest -v test_europe_rotation test_europe_history test_europe_daily
+      - run: python3 -m unittest -v test_europe_rotation test_europe_history test_europe_daily test_europe_map
