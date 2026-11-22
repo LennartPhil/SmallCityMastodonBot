@@ -1,33 +1,42 @@
-# Europe daily controller
+# Europe on the shared C# bot
 
-europe_daily.py now owns the Europe selection, count validation and publication flow. It uses europe_map.py with Pillow 13.0.0 for the same 3x3, zoom-16 tile layout and existing OSM_copyright.png overlay. Europe workflows require only Python 3.12. Other bots retain their existing entry points. The earlier SQLite helper is retained for tests/local experimentation; production uses the GitHub JSON journal instead.
+EuropeDaily.cs owns Europe's bounded selection and durable history. It calls Program.GenerateImageFromOSMTiles and Program.PostTown, the same renderer and Mastonet publication function used by the other bots. Python remains for offline collection, screening and country attribution, not daily rendering or posting. The experimental Python daily controller and Pillow renderer have been removed.
 
-## Preview
+## Preview and checks
 
-Run the Europe daily controller workflow with publish unchecked. It reads history, selects a country and town, checks a fresh Overpass building count, renders an attributed map and uploads the text/image. It never updates posting history in preview mode.
+Use the Europe dry run workflow on europe-country-rotation. It builds the shared .NET 9 project, runs /europetest offline checks, then runs /europe without --publish. Inspect europe-preview.png and europe-post.txt in the artifact. A green workflow alone is not proof of a usable map.
 
-Country-attributed dataset: townsList_Europe_countries.json (2,207 screened candidates, 25 countries). Country attribution was recovered from the original collection caches. Automated candidates have not all received manual review. Population values can be historical.
+Local command after building:
+`dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe`
+
+The preview needs GH_TOKEN, GITHUB_REPOSITORY, EUROPE_STATE_BRANCH and OVERPASS_PRIMARY_URL. It reads the remote journal but never writes history or calls Mastodon.
+
+## Selection
+
+The 2,207 screened candidates across 25 countries are retained unchanged. Population must be 1–999, live building count at most 25, and twice the building count strictly less than population. Counts are OSM building objects within 800 m, not houses or proof of missing mapping. Overpass errors, incomplete counts and snapshots older than 48 hours stop the run.
+
+Previously posted nodes and the previous successful country are excluded. Countries never posted or least recently posted are preferred, with randomized ties. A round-robin search checks at most 50 candidates and a ten-minute selection budget between requests. No suitable candidate means no post.
 
 ## Durable history
 
-europe-posting-history.json is read directly from GitHub at every run. Updates use the current blob SHA as an optimistic concurrency guard. A pending record is committed BEFORE Mastodon uploads/publication. The success record is committed with the returned Mastodon status ID. An unresolved pending entry blocks another run. Concurrent reservations cannot both succeed.
+europe-posting-history.json is read from GitHub every run. A pending record is saved with a compare-SHA update BEFORE Mastodon uploads or publication. Only a returned status ID is saved as a successful post. An unresolved pending record blocks future runs; publication is not automatically retried. One successful post per UTC day is allowed. The workflow serializes production runs.
 
-If a request or final journal write fails, inspect the account first. If the status exists, append a success record using pending.node_id, pending.country_code, actual status_id and posted_at, then set pending to null. If positively confirmed that no status exists, clear pending. Never clear pending automatically on a timeout. Preserve all earlier history. Restrict workflow execution and journal editing to trusted maintainers.
+If a request or final journal write fails, inspect Mastodon first. If a post exists, append its node_id, country_code, actual status_id and posted_at to posts, then clear pending. Only clear pending without adding a post when positively confirmed that no post exists. Never clear pending automatically on a timeout.
 
-A successful UTC date can have at most one post. The last successfully posted country is excluded, even after skipped days. Candidates already in history never repeat. At most 50 candidates are checked, spread across countries in recency order; a ten-minute selection budget is checked between requests. Overpass errors stop the run instead of becoming zero counts.
+## Map blocker and dependencies
+
+The renderer still uses Matt's OSM tile source and ImageSharp 3.1.12 dependencies. Returning to C# does not guarantee tile access. The exact Access blocked tile observed in run 45039931108 is rejected by decoded-pixel fingerprint; changed error artwork is not guaranteed to be detected. Inspect the first real image before launch. Do not change identities or endpoints to evade a block; resolve permitted tile access with Matt.
+
+Existing ImageSharp vulnerability warnings remain unresolved. No licensing-related version upgrade is included. Agree dependency remediation with the shared project maintainer.
 
 ## Launch gates
 
-1. Pass Python controller and renderer CI.
-2. Run a preview on this branch and inspect the map/text. Verify the Pillow-generated map and attribution visually.
-3. Confirm which SINGLE repository Matt will host; its main branch must contain this code, dataset and journal. Do not activate the same bot in two forks.
-4. Add OVERPASS_PRIMARY_URL and MASTODON_API_KEY_EU secrets. The Mastodon account must be SmallTownEurope on en.osm.town.
-5. Ensure Actions can update the journal on main (contents: write; branch rules must permit this). A failed reservation prevents posting.
-6. Only after preview verification, set repository variable EUROPE_ENABLE_POSTING=true. This enables the daily 19:05 UTC schedule. A manual run with publish checked also requires that variable and main.
-7. Inspect the first status and journal record. Disable the variable to stop scheduled posting.
+1. Pass the C# build and /europetest checks.
+2. Complete a real preview and visually verify the map and attribution.
+3. Confirm ONE hosting repository with Matt; never activate both forks.
+4. Put this code, dataset and journal on its main branch. Configure OVERPASS_PRIMARY_URL and MASTODON_API_KEY_EU secrets.
+5. Ensure Actions can update the journal (contents: write and compatible branch rules).
+6. Only after those checks set EUROPE_ENABLE_POSTING=true. The daily schedule is 19:05 UTC. Manual publication also requires main, --publish and the enable variable.
+7. Check the first real post and matching history record. Unset the variable to disable scheduling.
 
-The schedule is present but disabled while EUROPE_ENABLE_POSTING is unset. Replies/monthly posts are not invoked. Preview artifacts are diagnostic, not the persistent state store.
-
-## Validation
-
-Local tests cover country rotation and local journal persistence (7 earlier tests), plus remote SHA guarding, pending/success transitions, failed reservations and wording (4 new tests). CI runs Python tests including the Pillow renderer. The shared C# project and its dependency versions remain as on main; its existing ImageSharp security warnings are NOT resolved by this Europe-only change. A real end-to-end preview and live Mastodon test remain required; mocked/local tests do not establish these.
+Replies and monthly summaries are not enabled for Europe. Their text parsers have not been adapted to Europe's wording. The Europe overview map remains a post-launch task.
