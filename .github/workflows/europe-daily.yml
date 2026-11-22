@@ -20,10 +20,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-dotnet@v5
         with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r requirements-europe.txt
+          dotnet-version: '9.0.x'
+      - run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+      - run: dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europetest
       - name: Generate preview or publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -35,9 +36,9 @@ jobs:
         run: |
           if [ "$PUBLISH_REQUESTED" = "true" ]; then
             test "$GITHUB_REF_NAME" = "main" || { echo "Live posting requires main"; exit 1; }
-            python3 europe_daily.py --publish
+            dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe --publish
           else
-            python3 europe_daily.py
+            dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe
           fi
       - uses: actions/upload-artifact@v4
         if: always()
