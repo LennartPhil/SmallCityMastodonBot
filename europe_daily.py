@@ -4,7 +4,7 @@ import base64
 import copy
 import json
 import os
-import subprocess
+from europe_map import render_map
 import time
 import urllib.request
 import urllib.parse
@@ -119,7 +119,7 @@ def main():
             print(f'Rejected {n["id"]}: {count} buildings');time.sleep(10);continue
         text=text_for(n,count);Path('europe-post.txt').write_text(text)
         image=Path('europe-preview.png')
-        subprocess.run(['dotnet','run','--project','SmallCityMastodonBot.csproj','--configuration','Release','--no-build','--no-launch-profile','--','/europemap',str(n['lat']),str(n['lon']),str(image)],check=True)
+        render_map(n['lat'],n['lon'],image)
         print(text)
         if args.publish:
             key=reserve(journal,n,text)
