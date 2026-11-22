@@ -1,8 +1,12 @@
 import copy
+import json
+import os
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from datetime import datetime,timezone
-from europe_daily import reserve,finish,check_ready,RemoteJournal,text_for
+from europe_daily import reserve,finish,check_ready,RemoteJournal,text_for,main
 
 class Journal:
  def __init__(self):self.state={'version':1,'posts':[],'pending':None};self.saved=[]
@@ -26,6 +30,22 @@ class DailyTests(unittest.TestCase):
   with patch('europe_daily.request',return_value={'content':{'sha':'new'}}) as call:
    j.save({'version':1,'posts':[],'pending':None})
    self.assertEqual(call.call_args.args[2]['sha'],'old');self.assertEqual(j.sha,'new')
+ def test_preview_renders_without_publishing_or_history_write(self):
+  node={'id':1,'country_code':'FR','lat':48,'lon':2,'tags':{'name':'Test','population':'50'}}
+  journal=Journal()
+  previous=os.getcwd()
+  with tempfile.TemporaryDirectory() as directory:
+   try:
+    os.chdir(directory)
+    Path('townsList_Europe_countries.json').write_text(json.dumps({'elements':[node]}))
+    with patch('sys.argv',['europe_daily.py']), patch('europe_daily.RemoteJournal',return_value=journal), patch('europe_daily.ordered_candidates',return_value=[node]), patch('europe_daily.building_count',return_value=10), patch('europe_daily.render_map') as render, patch('europe_daily.publish') as post:
+     main()
+     render.assert_called_once_with(48,2,Path('europe-preview.png'))
+     post.assert_not_called()
+     self.assertEqual(journal.saved,[])
+     self.assertIn('France',Path('europe-post.txt').read_text())
+   finally:
+    os.chdir(previous)
  def test_wording(self):
   text=text_for({'id':1,'country_code':'FR','lat':48,'lon':2,'tags':{'name':'Test','population':'50'}},10)
   self.assertIn('France',text);self.assertIn('recorded in OSM',text);self.assertIn('within 800 m: 10',text)
