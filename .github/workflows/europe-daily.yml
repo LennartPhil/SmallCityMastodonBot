@@ -23,10 +23,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '9.0.x'
-      - run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+      - run: python3 -m pip install -r requirements-europe.txt
       - name: Generate preview or publish
         env:
           GH_TOKEN: ${{ github.token }}
