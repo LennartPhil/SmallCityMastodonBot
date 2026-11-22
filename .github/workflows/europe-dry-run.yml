@@ -9,16 +9,18 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-dotnet@v5
         with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r requirements-europe.txt
+          dotnet-version: '9.0.x'
+      - run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+      - name: Check Europe selection and safeguards
+        run: dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europetest
 
       - name: Generate a post without publishing
         env:
@@ -28,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python3 europe_daily.py 2>&1 | tee europe-dry-run.log
+          dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe 2>&1 | tee europe-dry-run.log
 
           if ! grep -Fq "Preview only: no publication or history update." europe-dry-run.log; then
             echo "::error::The bot did not finish generating a test post."
