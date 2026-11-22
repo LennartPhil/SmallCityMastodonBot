@@ -23,6 +23,20 @@ namespace SmallCityMastodonBot
         public static string apiKey = "";
         static void Main(string[] args)
         {
+            if (args.Length > 0 && (args[0] == "/europe" || args[0] == "/europetest"))
+            {
+                try
+                {
+                    if (args[0] == "/europetest") EuropeDaily.SelfTest();
+                    else EuropeDaily.Run(args.Skip(1).ToArray()).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                    Environment.ExitCode = 1;
+                }
+                return;
+            }
             if (args.Length == 0)
             {
                 Console.WriteLine("USAGE: SmallCityMastodonBot apiKey [/postTown] [/postReplies] [/postMonthly]");
@@ -273,13 +287,14 @@ namespace SmallCityMastodonBot
             Console.WriteLine($"INFO - TOWNS SEARCHED: {townsSearched}");
         }
 
-        private static async Task PostTown(HttpClient client, string postContent, string token, byte[] image, string fileName, string altText)
+        internal static async Task<string> PostTown(HttpClient client, string postContent, string token, byte[] image, string fileName, string altText)
         {
             var domain = "en.osm.town";
             var mastodonClient = new MastodonClient(domain, token, client);
             var attachment = await mastodonClient.UploadMedia(new MemoryStream(image), fileName, altText);
             var mediaIds = new List<string>() { attachment.Id };
             var result = await mastodonClient.PublishStatus(postContent, mediaIds: mediaIds, language: "en");
+            return result.Id;
         }
 
         private async static Task<string> GetStateNameFromNominatim(double lat, double lon, HttpClient client)
@@ -360,6 +375,7 @@ namespace SmallCityMastodonBot
 
                     byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
                     using var tileImage = Image.Load<Rgba32>(imageBytes);
+                    EuropeDaily.ValidateTile(tileImage);
 
                     int destX = i * TILE_SIZE;
                     int destY = j * TILE_SIZE;
