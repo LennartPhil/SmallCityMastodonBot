@@ -1,32 +1,33 @@
-# Europe country rotation — integration in progress
+# Europe daily controller
 
-These modules are tested foundations, not yet called by Program.cs. Do not enable live posting based on this PR.
+europe_daily.py now owns the Europe selection, count validation and publication flow. It uses the existing C# image renderer through /europemap. Other bots retain their existing entry points. The earlier SQLite helper is retained for tests/local experimentation; production uses the GitHub JSON journal instead.
 
-## Country attribution
+## Preview
 
-Extract towns-cache.tar.gz from the successful population-collection artifact. This is the collection cache, not screening-cache. Run:
+Run the Europe daily controller workflow with publish unchecked. It reads history, selects a country and town, checks a fresh Overpass building count, renders an attributed map and uploads the text/image. It never updates posting history in preview mode.
 
-```bash
-python3 europe_rotation.py townsList_Europe_screened_10000.json --collection-cache towns-cache --output townsList_Europe_countries.json
-```
+Country-attributed dataset: townsList_Europe_countries.json (2,207 screened candidates, 25 countries). Country attribution was recovered from the original collection caches. Automated candidates have not all received manual review. Population values can be historical.
 
-The output preserves screened nodes and adds country_code outside OSM tags. France tiles map to FR, Turkish districts map to TR. Missing/conflicting attribution aborts instead of guessing. The three manually excluded towns are removed. This uses no network requests.
+## Durable history
 
-## Selection
+europe-posting-history.json is read directly from GitHub at every run. Updates use the current blob SHA as an optimistic concurrency guard. A pending record is committed BEFORE Mastodon uploads/publication. The success record is committed with the returned Mastodon status ID. An unresolved pending entry blocks another run. Concurrent reservations cannot both succeed.
 
-ordered_candidates takes candidates and successful posting history. It excludes already posted nodes and the country of the last successful post, sorts countries by least recent use and randomizes tied countries and towns. It returns no candidates when only the last country is available. The caller must apply the live building filters and bounded retries; filter failures must not be recorded as successful posts.
+If a request or final journal write fails, inspect the account first. If the status exists, append a success record using pending.node_id, pending.country_code, actual status_id and posted_at, then set pending to null. If positively confirmed that no status exists, clear pending. Never clear pending automatically on a timeout. Preserve all earlier history. Restrict workflow execution and journal editing to trusted maintainers.
 
-## Journal
+A successful UTC date can have at most one post. The last successfully posted country is excluded, even after skipped days. Candidates already in history never repeat. At most 50 candidates are checked, spread across countries in recency order; a ten-minute selection budget is checked between requests. Overpass errors stop the run instead of becoming zero counts.
 
-PostingHistory uses SQLite transactions. Reserve before publishing, confirm with the returned Mastodon status ID afterward. A pending reservation survives restarts and blocks another post until reconciled. Never release a reservation merely because a publish request timed out: the server may have accepted it. A positively confirmed failure can be released without affecting rotation. Back up the database.
+## Launch gates
 
-## Remaining integration before launch
+1. Pass Python and .NET CI, including vulnerability checks.
+2. Run a preview on this branch and inspect the map/text. ImageSharp 3.2.0 needs runtime validation, including any licensing requirements applicable to the hosting setup.
+3. Confirm which SINGLE repository Matt will host; its main branch must contain this code, dataset and journal. Do not activate the same bot in two forks.
+4. Add OVERPASS_PRIMARY_URL and MASTODON_API_KEY_EU secrets. The Mastodon account must be SmallTownEurope on en.osm.town.
+5. Ensure Actions can update the journal on main (contents: write; branch rules must permit this). A failed reservation prevents posting.
+6. Only after preview verification, set repository variable EUROPE_ENABLE_POSTING=true. This enables the daily 19:05 UTC schedule. A manual run with publish checked also requires that variable and main.
+7. Inspect the first status and journal record. Disable the variable to stop scheduled posting.
 
-- Recover country attribution for the actual 2,207 screened candidates from the collection cache.
-- Integrate selection into the C# live checks and text/image generation; dry runs must not advance real history.
-- Implement durable remote journal storage for the maintainer's GitHub Actions hosting. A runner-local SQLite file or expiring Actions cache alone is NOT sufficient. Persist the reservation remotely before calling Mastodon and reconcile any uncertain result before another run.
-- Connect confirmed Mastodon status IDs to the journal, serialize workflows, and verify restoration across fresh runners.
-- Include country and cautious mapping-opportunity wording in posts.
-- Test multiple simulated days and an end-to-end dry run, resolve dependency warnings, then separately enable the live schedule.
+The schedule is present but disabled while EUROPE_ENABLE_POSTING is unset. Replies/monthly posts are not invoked. Preview artifacts are diagnostic, not the persistent state store.
 
-Local validation: python3 -m unittest -v test_europe_rotation test_europe_history. Seven tests cover rotation, recency, exhaustion, missing/conflicting countries, persistence across reopening, uncertain results and two competing database connections.
+## Validation
+
+Local tests cover country rotation and local journal persistence (7 earlier tests), plus remote SHA guarding, pending/success transitions, failed reservations and wording (4 new tests). CI builds C# and treats moderate/high/critical NuGet advisories as errors. A real end-to-end preview and live Mastodon test remain required; mocked/local tests do not establish these.
