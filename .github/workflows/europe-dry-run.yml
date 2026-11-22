@@ -25,16 +25,15 @@ jobs:
 
       - name: Generate a post without publishing
         env:
+          GH_TOKEN: ${{ github.token }}
+          EUROPE_STATE_BRANCH: ${{ github.ref_name }}
           OVERPASS_PRIMARY_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
         shell: bash
         run: |
           set -o pipefail
-          dotnet run --project SmallCityMastodonBot.csproj \
-            --configuration Release --no-build --no-launch-profile \
-            -- "12345" "UnmappedSmallTownEurope" "/posttown" \
-            2>&1 | tee europe-dry-run.log
+          python3 europe_daily.py 2>&1 | tee europe-dry-run.log
 
-          if ! grep -Fq "Not posting town." europe-dry-run.log; then
+          if ! grep -Fq "Preview only: no publication or history update." europe-dry-run.log; then
             echo "::error::The bot did not finish generating a test post."
             exit 1
           fi
@@ -46,5 +45,6 @@ jobs:
           name: europe-dry-run
           path: |
             europe-dry-run.log
-            *_TownImage.png
+            europe-preview.png
+            europe-post.txt
           retention-days: 7
