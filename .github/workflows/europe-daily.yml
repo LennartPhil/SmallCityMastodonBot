@@ -1,0 +1,49 @@
+name: Europe daily controller
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a real post (requires enable variable)
+        type: boolean
+        default: false
+  schedule:
+    - cron: '5 19 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: europe-daily-posting
+  cancel-in-progress: false
+jobs:
+  daily:
+    if: github.event_name == 'workflow_dispatch' || vars.EUROPE_ENABLE_POSTING == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet build SmallCityMastodonBot.csproj --configuration Release
+      - run: dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europetest
+      - name: Generate preview or publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OVERPASS_PRIMARY_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
+          MASTODON_API_KEY_EU: ${{ secrets.MASTODON_API_KEY_EU }}
+          EUROPE_ENABLE_POSTING: ${{ vars.EUROPE_ENABLE_POSTING }}
+          EUROPE_STATE_BRANCH: ${{ github.ref_name }}
+          PUBLISH_REQUESTED: ${{ github.event_name == 'schedule' || inputs.publish }}
+        run: |
+          if [ "$PUBLISH_REQUESTED" = "true" ]; then
+            test "$GITHUB_REF_NAME" = "main" || { echo "Live posting requires main"; exit 1; }
+            dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe --publish
+          else
+            dotnet run --project SmallCityMastodonBot.csproj --configuration Release --no-build --no-launch-profile -- /europe
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: europe-preview
+          path: |
+            europe-post.txt
+            europe-preview.png
