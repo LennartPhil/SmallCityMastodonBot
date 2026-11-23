@@ -19,7 +19,31 @@ internal static class EuropeDaily
         ["GB"]="United Kingdom",["GR"]="Greece",["HR"]="Croatia",["IT"]="Italy",["LT"]="Lithuania",
         ["MD"]="Moldova",["ME"]="Montenegro",["MK"]="North Macedonia",["PL"]="Poland",
         ["PT"]="Portugal",["RO"]="Romania",["RS"]="Serbia",["SE"]="Sweden",["SI"]="Slovenia",
-        ["TR"]="Türkiye",["XK"]="Kosovo"
+        ["TR"]="Türkiye",["XK"]="Kosovo",
+        // All remaining country/territory codes supported by the collection scope.
+        ["AD"]="Andorra",
+        ["BE"]="Belgium",
+        ["CH"]="Switzerland",
+        ["DE"]="Germany",
+        ["DK"]="Denmark",
+        ["EE"]="Estonia",
+        ["FO"]="Faroe Islands",
+        ["GG"]="Guernsey",
+        ["HU"]="Hungary",
+        ["IE"]="Ireland",
+        ["IM"]="Isle of Man",
+        ["IS"]="Iceland",
+        ["JE"]="Jersey",
+        ["LI"]="Liechtenstein",
+        ["LU"]="Luxembourg",
+        ["LV"]="Latvia",
+        ["MC"]="Monaco",
+        ["MT"]="Malta",
+        ["NL"]="Netherlands",
+        ["NO"]="Norway",
+        ["SM"]="San Marino",
+        ["SK"]="Slovakia",
+        ["VA"]="Vatican City"
     };
     static string Required(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
         ? value : throw new InvalidOperationException($"Missing {name}");
@@ -154,7 +178,7 @@ internal static class EuropeDaily
             if (!Eligible(pop,count)) { Console.WriteLine($"Rejected {node["id"]}: {count} buildings"); await Task.Delay(10000); continue; }
             double lat=(double)node["lat"]!,lon=(double)node["lon"]!;
             string code=(string)node["country_code"]!;
-            string text=FormattableString.Invariant($"{node["tags"]!["name"]}, {Countries[code]}\nA small place to explore on OpenStreetMap—are there any missing details?\n\nPopulation recorded in OSM: {pop}\nMapped building objects within 800 m: {count}\n\nhttps://www.openstreetmap.org/#map=16/{lat}/{lon}\n#OpenStreetMap #SmallTownEurope");
+            string text=FormattableString.Invariant($"{node["tags"]!["name"]}, {Countries[code]} seems like it could use some mapping!\n\nPopulation: {pop}\nBuilding count: {count}\n\nMap link: https://www.openstreetmap.org/#map=16/{lat}/{lon}\n#OpenStreetMap");
             await File.WriteAllTextAsync("europe-post.txt",text);
             await Program.GenerateImageFromOSMTiles(tiles,16,lat,lon,"europe-preview.png");
             Console.WriteLine(text);
@@ -184,6 +208,7 @@ internal static class EuropeDaily
         var selected=Select(nodes,posts);
         Check(selected.Count==2 && (long)selected[0]["id"]! ==3 && (long)selected[1]["id"]! ==4);
         Check(Select(JArray.Parse("[{id:5,country_code:'ES'}]"),posts).Count==0);
+        Check(Select(JArray.Parse("[{id:6,country_code:'DE'},{id:7,country_code:'NO'},{id:8,country_code:'CH'}]"),new JArray()).Count==3);
         var state=JObject.Parse("{version:1,posts:[],pending:null}"); Check(Ready(state));
         state["pending"]=new JObject();
         bool blocked=false; try { Ready(state); } catch (InvalidOperationException) { blocked=true; } Check(blocked);
